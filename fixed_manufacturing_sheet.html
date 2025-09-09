@@ -1,0 +1,222 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Manufacturing Sheet</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    form { max-width: 900px; }
+    .row {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+    .row > div { flex: 1; min-width: 250px; }
+    .radio-group { display: flex; gap: 20px; margin-top: 5px; }
+    textarea, input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 15px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover { background: #0056b3; }
+    .preview-link { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Manufacturing Sheet</h1>
+  <form id="clientForm">
+    <div class="row">
+      <div><label>Full Name:</label><input type="text" id="name" required></div>
+      <div><label>Address:</label><input type="text" id="address" required></div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Home Series:</label>
+        <select id="homeSeries" required>
+          <option value="">-- Please select --</option>
+          <option value="220 Series">220 Series</option>
+          <option value="240 Series">240 Series</option>
+          <option value="240 Series Certified">240 Series Certified</option>
+          <option value="270 Series">270 Series</option>
+          <option value="270 Series Certified">270 Series Certified</option>
+        </select>
+      </div>
+      <div>
+        <label>Dwelling Size:</label>
+        <select id="dwellingSize" required>
+          <option value="">-- Please select --</option>
+          <option value="20FT">20FT</option>
+          <option value="30FT">30FT</option>
+          <option value="40FT">40FT</option>
+        </select>
+      </div>
+      <div>
+        <label>Layout:</label>
+        <select id="layout" required>
+          <option value="">-- Select Dwelling Size First --</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Frame Color:</label>
+        <select id="frameColor" required>
+          <option value="">-- Please select --</option>
+          <option value="White">White</option>
+          <option value="Grey">Grey</option>
+          <option value="Black">Black</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div style="flex: 2;">
+        <label>Exterior Wall:</label>
+        <div class="radio-group">
+          <label><input type="radio" name="exteriorWallType" value="Color Coated Steel Sheet"> Color Coated Steel Sheet</label>
+          <label><input type="radio" name="exteriorWallType" value="Metal Cladding"> Metal Cladding</label>
+        </div>
+        <select id="exteriorWallSelect" required>
+          <option value="">-- Select Exterior Wall Type First --</option>
+        </select>
+        <div class="preview-link" id="previewLinkContainer" style="display: none;">
+          <a id="previewLink" href="#" target="_blank">
+            <button type="button">View Sample Image</button>
+          </a>
+        </div>
+      </div>
+    </div>
+    <button type="button" onclick="generatePDF()">Download as PDF</button>
+  </form>
+
+  <script>
+    const layoutOptions = {
+      "20FT": ["1 Kitchen-1 Bathroom-1 Bedroom", "1 Kitchen-1 Bathroom-2 Bedrooms", "1 Kitchen-1 Bathroom-Open Layout"],
+      "30FT": ["1 Kitchen-1 Bathroom-1 Bedroom", "1 Kitchen-1 Bathroom-2 Bedrooms", "1 Kitchen-1 Bathroom-3 Bedrooms", "1 Kitchen-2 Bathrooms-2 Bedrooms", "1 Kitchen-2 Bathrooms-3 Bedrooms", "1 Kitchen-1 Bathroom-Open Layout"],
+      "40FT": ["1 Kitchen-1 Bathroom-1 Bedroom", "1 Kitchen-1 Bathroom-2 Bedrooms", "1 Kitchen-1 Bathroom-3 Bedrooms", "1 Kitchen-1 Bathroom-4 Bedrooms", "1 Kitchen-2 Bathrooms-2 Bedrooms", "1 Kitchen-2 Bathrooms-3 Bedrooms", "1 Kitchen-2 Bathrooms-4 Bedrooms", "1 Kitchen-1 Bathroom-Open Layout"]
+    };
+
+    const exteriorWallOptions = {
+      "Color Coated Steel Sheet": ["White", "Grey", "Wood", "Red", "Blue"],
+      "Metal Cladding": ["Dark Wood Grain", "Light Wood Grain", "Typical Wood Grain", "Beige", "Grey Wood Grain", "White", "Grey wall panel", "Yellow", "Silver", "Flat Grey"]
+    };
+
+    const previewImageLinks = {
+      "White (Color Coated Steel Sheet)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/EUxrokq73k1GozOvinWwAGkBknX9624zKU2ZKaRWbc4oQA?e=TkOfWU",
+      "Grey (Color Coated Steel Sheet)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/EcA27RaV761LtcYEH4P490kBzaWiGnO7Aa70MFHpkjZvfw?e=C6gEQd",
+      "Wood (Color Coated Steel Sheet)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/EdOd67OpnbhOniVFfP6ZcSEBpYAWEASJMEBvH3Q9IAgSiA?e=RorfeM",
+      "Red (Color Coated Steel Sheet)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/EdEj8Y_ZC3pCsozJC5_RR6UBQ8gUMVw-aSuJ84ghiMOK5Q?e=5Lr4Nh",
+      "Blue (Color Coated Steel Sheet)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/EX9bEmnyru9Hm2Rlg_NomZ8BBnqEKEE5VxKXx4StyoYCVA?e=HcIYAg",
+      "Beige (Metal Cladding)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/EVuZoPO8wYRPmFQTdiBiW0wB-GsQuK4J1D2soVD8agMslA?e=buight",
+      "Dark Wood Grain (Metal Cladding)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/EdfEEkBt5apDqPMI8mtPmEgBpBl6xuHvXxajPG-fWFDLHQ?e=qLDRM7",
+      "Flat Grey (Metal Cladding)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/ETvEBm8ZK4xAnDig3_ZyCWoB-7v4YRUZ8jYJStpIKaF6vw?e=Gm4dcb",
+      "Grey wall panel (Metal Cladding)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/EZSsXQPwUiBOjk7V1pWiV0kBM4DD_1-kQOWtLVqHHYyW0g?e=0iEyFU",
+      "Grey Wood Grain (Metal Cladding)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/EaeGc7b_fAZEqlCZPJnqbTIB2Pywn_ptULzfbq0jO3luuA?e=hMcy3m",
+      "Light Wood Grain (Metal Cladding)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/EQnDPCPKcopNlHH50c3IZWgBpssXCMVXbG145nQ-kaBEGg?e=AYq40A",
+      "Typical Wood Grain (Metal Cladding)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/ETOfyu3-TtBBrtr-osyry24Bj_qsnNOTukAURRMiEiUmgg?e=r6qfvQ",
+      "Silver (Metal Cladding)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/ER973jWQyhJHozTFPZdsA-MBokhGCvkUKvhig5kH_8HU1g?e=QKsjWB",
+      "White (Metal Cladding)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/EYB9Bg4vGn5LqeLECtskEY0B9xEtLHRq-NnBDaB5dw-pvA?e=nwEvsm",
+      "Yellow (Metal Cladding)": "https://neolivingaustralia-my.sharepoint.com/:i:/g/personal/dunn_neoliving_au/Eaj1sxm9PslEvP4kkEOsLWwBBIc22G0PkFnsQuOO7-hc9g?e=AD6Qz3"
+    };
+
+    function updateLayoutOptions() {
+      const size = document.getElementById("dwellingSize").value;
+      const layout = document.getElementById("layout");
+      layout.innerHTML = size && layoutOptions[size]
+        ? '<option value="">-- Please select --</option>' + layoutOptions[size].map(o => `<option>${o}</option>`).join('')
+        : '<option>-- No Layouts Available --</option>';
+    }
+
+    function updateExteriorWallOptions() {
+      const selected = document.querySelector('input[name="exteriorWallType"]:checked')?.value;
+      const select = document.getElementById("exteriorWallSelect");
+      if (!selected) {
+        select.innerHTML = "<option>-- Select Exterior Wall Type First --</option>";
+        return;
+      }
+      select.innerHTML = '<option value="">-- Please select --</option>' + exteriorWallOptions[selected].map(o => `<option>${o}</option>`).join('');
+    }
+
+    function updatePreviewLink() {
+      const type = document.querySelector('input[name="exteriorWallType"]:checked')?.value;
+      const style = document.getElementById("exteriorWallSelect").value;
+      const fullKey = `${style} (${type})`;
+      const url = previewImageLinks[fullKey];
+      const container = document.getElementById("previewLinkContainer");
+      const link = document.getElementById("previewLink");
+      if (url) {
+        link.href = url;
+        container.style.display = "block";
+      } else {
+        container.style.display = "none";
+      }
+    }
+
+    function generatePDF() {
+      const { jsPDF } = window.jspdf;
+      const name = document.getElementById("name").value;
+      const address = document.getElementById("address").value;
+      const homeSeries = document.getElementById("homeSeries").value;
+      const dwellingSize = document.getElementById("dwellingSize").value;
+      const layout = document.getElementById("layout").value;
+      const frameColor = document.getElementById("frameColor").value;
+      const exteriorWallType = document.querySelector('input[name="exteriorWallType"]:checked')?.value;
+      const exteriorWallSelect = document.getElementById("exteriorWallSelect").value;
+
+      if (!name || !address || !homeSeries || !dwellingSize || !layout || !frameColor || !exteriorWallType || !exteriorWallSelect) {
+        alert("Please fill in all fields.");
+        return;
+      }
+
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("Manufacturing Sheet", 20, 20);
+      doc.setFontSize(12);
+      const lines = [
+        `Full Name: ${name}`,
+        `Address: ${address}`,
+        `Home Series: ${homeSeries}`,
+        `Dwelling Size: ${dwellingSize}`,
+        `Layout: ${layout}`,
+        `Frame Color: ${frameColor}`,
+        `Exterior Wall Type: ${exteriorWallType}`,
+        `Exterior Wall Selection: ${exteriorWallSelect}`
+      ];
+      lines.forEach((line, i) => doc.text(line, 20, 40 + 10 * i));
+      doc.save("manufacturing-sheet.pdf");
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const dwellingSize = document.getElementById("dwellingSize");
+      const selectedWallType = document.querySelector('input[name="exteriorWallType"]:checked');
+      const wallSelect = document.getElementById("exteriorWallSelect");
+
+      if (dwellingSize.value) updateLayoutOptions();
+      if (selectedWallType) {
+        updateExteriorWallOptions();
+        if (wallSelect.value) updatePreviewLink();
+      }
+
+      dwellingSize.addEventListener("change", updateLayoutOptions);
+      document.getElementsByName("exteriorWallType").forEach(radio => {
+        radio.addEventListener("change", () => {
+          updateExteriorWallOptions();
+          updatePreviewLink();
+        });
+      });
+      wallSelect.addEventListener("change", updatePreviewLink);
+    });
+  </script>
+</body>
+</html>
